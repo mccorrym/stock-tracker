@@ -1,9 +1,4 @@
 var tickers = ["SCHB", "SCHA", "SCHX", "SCHF", "SCHE", "SCHD", "TFI", "C", "BRK.B", "F", "AAPL", "APTV", "DLPH"];
-var options = {
-  headers: {
-    "Cache-Control": "max-age=0"
-  }
-};
 
 function FIND_TODAYS_CELL(sheet_name) {
   var values = SpreadsheetApp.getActiveSpreadsheet().getSheetByName(sheet_name).getRange("A:A").getValues();
@@ -27,6 +22,11 @@ function GET_REALTIME_PRICING() {
       str += tickers[i]+",";
     }
     str = str.substr(0, (str.length-1));
+    var options = {
+      headers: {
+        "Cache-Control": "max-age=0"
+      }
+    };
     var response = UrlFetchApp.fetch("https://www.alphavantage.co/query?function=BATCH_QUOTES_US&symbols="+str+"&apikey="+PropertiesService.getScriptProperties().getProperty("api_key"), options);
     var json = JSON.parse(response);
     for (var key in json["Stock Batch Quotes"]) {
@@ -50,6 +50,11 @@ function GET_HISTORICAL_PRICING() {
   
   if (!isNaN(ticker_index)) {
     for (i=ticker_index; i<(ticker_index+3); i++) {
+      var options = {
+        headers: {
+          "Cache-Control": "max-age=0"
+        }
+      };
       var response = UrlFetchApp.fetch("https://www.alphavantage.co/query?function=TIME_SERIES_DAILY&outputsize=full&symbol="+tickers[i]+"&apikey="+PropertiesService.getScriptProperties().getProperty("api_key"), options);
       var json = JSON.parse(response);
       var prices = [];
