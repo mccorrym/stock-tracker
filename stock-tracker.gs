@@ -79,6 +79,8 @@ function GET_HISTORICAL_PRICING() {
       var quote_current_date = new Date(quote_date.getTime() + 86400000);
       
       if (quote_current_date.getDate() != current_date.getDate()) {
+        var f = quote_current_date.getDate();
+        var g = current_date.getDate();
         TRY_AGAIN(i);
         return false;
       } else {
@@ -96,8 +98,44 @@ function GET_HISTORICAL_PRICING() {
     }
     PropertiesService.getScriptProperties().setProperty("ticker_index", (ticker_index+3));
   } else {
+    // Check at 10AM on weekdays to see whether the market is open. This is done to avoid updating any sheets with closing prices erroneously in the event of a market holiday.
+    if (current_date.getDay() > 0 && current_date.getDay() < 6 && current_date.getHours() == 10 && current_date.getMinutes() == 0) {
+      // The Alphavantage and/or IPX APIs don't currently offer this capability. But Apple does! (for now?)
+      var url = "http://wu-quotes.apple.com/dgw?imei=555&apptype=finance";
+      var options = {
+        "method": "post",
+        "headers": {
+          "Content-Type": "text/xml"
+        },
+        "payload": "<?xml version='1.0' encoding='utf−8'?><request devtype='Apple_OSX' deployver='APPLE_DASHBOARD_1_0' app='YGoAppleStocksWidget' appver='unknown' api='finance' apiver='1.0.1' acknotification='0000'><query id='0' timestamp='`date +%s000`' type='getquotes'><list><symbol>SCHD</symbol></list></query></request>"
+      };
+      var response = UrlFetchApp.fetch(url, options);
+    
+      var document = XmlService.parse(response);
+      var root = document.getRootElement();
+      
+      try {
+        // The market_status value is 1 during market hours.
+        var market_status = root.getChild("result").getChild("list").getChild("quote").getChild("status").getChild("fart").getText();
+      
+        if (market_status != "1") {
+          PropertiesService.getScriptProperties().setProperty("market_open", false);
+        } else {
+          PropertiesService.getScriptProperties().setProperty("market_open", true);
+        }
+      } catch(e) {
+        // This service may no longer exist?
+        console.error("Call to wu-quotes.apple.com produced an error: "+e);
+        // Let's just assume the market is open until this can be debugged.
+        PropertiesService.getScriptProperties().setProperty("market_open", true);
+      }
+    }
     if (current_date.getDay() > 0 && current_date.getDay() < 6 && current_date.getHours() == 16 && current_date.getMinutes() == 0) {
-      PropertiesService.getScriptProperties().setProperty("ticker_index", 0);
+      // If the market was open today...
+      if (PropertiesService.getScriptProperties().getProperty("market_open") == true) {
+        // Update the sheets with today's closing prices.
+        PropertiesService.getScriptProperties().setProperty("ticker_index", 0);
+      }
     }
   }
 }
