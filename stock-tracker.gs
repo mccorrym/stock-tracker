@@ -130,7 +130,8 @@ function GET_HISTORICAL_PRICING() {
     }
     if (current_date.getDay() > 0 && current_date.getDay() < 6 && current_date.getHours() == 16 && current_date.getMinutes() == 0) {
       // If the market was open today...
-      if (PropertiesService.getScriptProperties().getProperty("market_open") == true) {
+      var market_status = PropertiesService.getScriptProperties().getProperty("market_open");
+      if (market_status == "true") {
         // Update the sheets with today's closing prices.
         PropertiesService.getScriptProperties().setProperty("ticker_index", 0);
       }
