@@ -79,8 +79,6 @@ function GET_HISTORICAL_PRICING() {
       var quote_current_date = new Date(quote_date.getTime() + 86400000);
       
       if (quote_current_date.getDate() != current_date.getDate()) {
-        var f = quote_current_date.getDate();
-        var g = current_date.getDate();
         TRY_AGAIN(i);
         return false;
       } else {
