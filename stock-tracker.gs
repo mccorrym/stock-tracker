@@ -114,7 +114,7 @@ function GET_HISTORICAL_PRICING() {
       
       try {
         // The market_status value is 1 during market hours.
-        var market_status = root.getChild("result").getChild("list").getChild("quote").getChild("status").getChild("fart").getText();
+        var market_status = root.getChild("result").getChild("list").getChild("quote").getChild("status").getText();
       
         if (market_status != "1") {
           PropertiesService.getScriptProperties().setProperty("market_open", false);
