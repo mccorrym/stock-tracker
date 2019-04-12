@@ -30,7 +30,6 @@ function GET_REALTIME_PRICING() {
     var response = UrlFetchApp.fetch("https://www.alphavantage.co/query?function=BATCH_QUOTES_US&symbols="+str+"&apikey="+PropertiesService.getScriptProperties().getProperty("api_key"), options);
     var json = JSON.parse(response);
     for (var key in json["Stock Batch Quotes"]) {
-      if (!json["Stock Batch Quotes"].hasOwnProperty(key)) continue;
       SpreadsheetApp.getActiveSpreadsheet().getSheetByName(json["Stock Batch Quotes"][key]["1. symbol"]).getRange("F2").setValue(json["Stock Batch Quotes"][key]["5. price"]);
       if (current_date.getHours() > 15) {
         // For some reason the TIME_SERIES_DAILY quotes are not accurate after-hours.
