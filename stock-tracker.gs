@@ -138,8 +138,18 @@ function GET_HISTORICAL_PRICING() {
       if (market_status == "true") {
         // Update the sheets with today's closing prices.
         PropertiesService.getScriptProperties().setProperty("ticker_index", 0);
+        // Check and update YTD performance (if necessary)
+        CALCULATE_YTD_PERFORMANCE();
       }
     }
+  }
+}
+function CALCULATE_YTD_PERFORMANCE() {
+  var closing_ytd = SpreadsheetApp.getActiveSpreadsheet().getSheetByName("Overview").getRange("K2").getValue();
+  var high_ytd = SpreadsheetApp.getActiveSpreadsheet().getSheetByName("Overview").getRange("K3").getValue();
+  
+  if (closing_ytd > high_ytd) {
+    SpreadsheetApp.getActiveSpreadsheet().getSheetByName("Overview").getRange("K3").setValue(closing_ytd);
   }
 }
 function TRY_AGAIN(index) {
