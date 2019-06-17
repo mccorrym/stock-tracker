@@ -18,7 +18,7 @@ function GET_REALTIME_PRICING() {
   var current_date = new Date();
   var api_try_again = parseInt(PropertiesService.getScriptProperties().getProperty("api_try_again"));
   // To save on API calls, only run this routine during market hours
-  if (current_date.getDay() > 0 && current_date.getDay() < 6 && current_date.getHours() > 9 && (current_date.getHours() < 16 || !isNaN(api_try_again))) {
+  if ((current_date.getDay() > 0 && current_date.getDay() < 6) && ((current_date.getHours() == 9 && current_date.getMinutes() > 30) || current_date.getHours() > 9) && (current_date.getHours() < 16 || !isNaN(api_try_again))) {
     // Check to see whether the market is open today
     if (PropertiesService.getScriptProperties().getProperty("market_open") == null) {
       // The IPX API offers this: 
