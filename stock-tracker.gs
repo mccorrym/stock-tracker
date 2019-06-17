@@ -8,101 +8,22 @@ function FIND_TODAYS_CELL(sheet_name) {
   while (values[column_count][0] != "") {
     var cell_date = new Date(values[column_count][0]);
     if (current_date.getTime() == cell_date.getTime()) {
-      return (column_count + 1)
+      return (column_count + 1);
     }
     column_count++;
   }
-  return false;
+  return (column_count + 1);
 }
 function GET_REALTIME_PRICING() {
   var current_date = new Date();
-  if (current_date.getDay() > 0 && current_date.getDay() < 6) {
-    var str = "";
-    for (i=0; i<tickers.length; i++) {
-      str += tickers[i]+",";
-    }
-    str = str.substr(0, (str.length-1));
-    var options = {
-      headers: {
-        "Cache-Control": "max-age=0"
-      }
-    };
-    var response = UrlFetchApp.fetch("https://www.alphavantage.co/query?function=BATCH_QUOTES_US&symbols="+str+"&apikey="+PropertiesService.getScriptProperties().getProperty("api_key"), options);
-    var json = JSON.parse(response);
-    for (var key in json["Stock Batch Quotes"]) {
-      SpreadsheetApp.getActiveSpreadsheet().getSheetByName(json["Stock Batch Quotes"][key]["1. symbol"]).getRange("F2").setValue(json["Stock Batch Quotes"][key]["5. price"]);
-      if (current_date.getHours() > 15) {
-        // For some reason the TIME_SERIES_DAILY quotes are not accurate after-hours.
-        // We need to correct the after-hours pricing with the BATCH_QUOTES_US results.
-        // This will only be done during the same trading day as the closing date, after the cell has been updated at least once with the TIME_SERIES_DAILY result.
-        var cell_number = FIND_TODAYS_CELL(json["Stock Batch Quotes"][key]["1. symbol"]);
-        if (cell_number !== false) {
-          SpreadsheetApp.getActiveSpreadsheet().getSheetByName(json["Stock Batch Quotes"][key]["1. symbol"]).getRange(cell_number, 2).setValue(json["Stock Batch Quotes"][key]["5. price"]);
-        }
-      }
-    }
-  }
-}
-function GET_HISTORICAL_PRICING() {
-  var current_date = new Date();
-  var ticker_index = parseInt(PropertiesService.getScriptProperties().getProperty("ticker_index"));
-  
-  if (!isNaN(ticker_index)) {
-    for (i=ticker_index; i<(ticker_index+3); i++) {
-      var options = {
-        headers: {
-          "Cache-Control": "max-age=0"
-        }
-      };
-      var response = UrlFetchApp.fetch("https://www.alphavantage.co/query?function=TIME_SERIES_DAILY&outputsize=full&symbol="+tickers[i]+"&apikey="+PropertiesService.getScriptProperties().getProperty("api_key"), options);
-      var json = JSON.parse(response);
-      var prices = [];
-      for (var key in json["Time Series (Daily)"]) {
-        if (!json["Time Series (Daily)"].hasOwnProperty(key)) continue;
-        
-        var close_date = new Date(key);
-        
-        if (close_date.getFullYear() == current_date.getFullYear()) {
-          prices.unshift({
-            "date": key,
-            "close": json["Time Series (Daily)"][key]["4. close"]
-          });
-        } else {
-          break;
-        }
-      }
-      
-      if (prices.length == 0) {
-        TRY_AGAIN(i);
-        return false;
-      }
-      
-      var quote_date = new Date(prices[(prices.length-1)]["date"]);
-      
-      // Add one day to the quote date (reports as 1 day in the past for some reason)
-      var quote_current_date = new Date(quote_date.getTime() + 86400000);
-      
-      if (quote_current_date.getDate() != current_date.getDate()) {
-        TRY_AGAIN(i);
-        return false;
-      } else {
-        PropertiesService.getScriptProperties().deleteProperty("ticker_tries");
-      }
-
-      for (j=0; j<prices.length; j++) {
-        SpreadsheetApp.getActiveSpreadsheet().getSheetByName(tickers[i]).getRange("A"+(j+2)).setValue(prices[j]["date"]);
-        SpreadsheetApp.getActiveSpreadsheet().getSheetByName(tickers[i]).getRange("B"+(j+2)).setValue(prices[j]["close"]);
-      }
-      if ((i+1) == tickers.length) {
-        PropertiesService.getScriptProperties().deleteProperty("ticker_index");
-        return false;
-      }
-    }
-    PropertiesService.getScriptProperties().setProperty("ticker_index", (ticker_index+3));
-  } else {
-    // Check at 10AM on weekdays to see whether the market is open. This is done to avoid updating any sheets with closing prices erroneously in the event of a market holiday.
-    if (current_date.getDay() > 0 && current_date.getDay() < 6 && current_date.getHours() == 10 && current_date.getMinutes() == 0) {
-      // The Alphavantage and/or IPX APIs don't currently offer this capability. But Apple does! (for now?)
+  var api_try_again = parseInt(PropertiesService.getScriptProperties().getProperty("api_try_again"));
+  // To save on API calls, only run this routine during market hours
+  if (current_date.getDay() > 0 && current_date.getDay() < 6 && current_date.getHours() > 9 && (current_date.getHours() < 16 || !isNaN(api_try_again))) {
+    // Check to see whether the market is open today
+    if (PropertiesService.getScriptProperties().getProperty("market_open") == null) {
+      // The IPX API offers this: 
+      // https://iexcloud.io/docs/api/#u-s-holidays-and-trading-dates
+      // May want to consider switching to this if Apple takes away this functionality
       var url = "http://wu-quotes.apple.com/dgw?imei=555&apptype=finance";
       var options = {
         "method": "post",
@@ -132,15 +53,48 @@ function GET_HISTORICAL_PRICING() {
         PropertiesService.getScriptProperties().setProperty("market_open", true);
       }
     }
-    if (current_date.getDay() > 0 && current_date.getDay() < 6 && current_date.getHours() == 16 && current_date.getMinutes() == 0) {
-      // If the market was open today...
-      var market_status = PropertiesService.getScriptProperties().getProperty("market_open");
-      if (market_status == "true") {
-        // Update the sheets with today's closing prices.
-        PropertiesService.getScriptProperties().setProperty("ticker_index", 0);
-        // Check and update YTD performance (if necessary)
-        CALCULATE_YTD_PERFORMANCE();
+    
+    // Only proceed with API calls if the market is open
+    var market_status = PropertiesService.getScriptProperties().getProperty("market_open");
+    if (market_status == "true") {   
+      var ticker_str = tickers.join(",");
+      var options = {
+        headers: {
+          "Cache-Control": "max-age=0"
+        }
+      };
+      var response = UrlFetchApp.fetch("https://cloud.iexapis.com/stable/stock/market/batch?symbols="+ticker_str+"&types=quote&token="+PropertiesService.getScriptProperties().getProperty("api_key"), options);
+      var json = JSON.parse(response);
+      for (var ticker in json) {
+        SpreadsheetApp.getActiveSpreadsheet().getSheetByName(ticker).getRange("F2").setValue(json[ticker]["quote"]["latestPrice"]);
+        // Determine if the market has closed
+        var closing_date = new Date(json[ticker]["quote"]["closeTime"]);
+        if (current_date.getHours() > 15) {
+          if (closing_date.getDate() == current_date.getDate()) {
+            // The market has closed. Update the individual ticker sheets with closing/historical data for today
+            var cell_number = FIND_TODAYS_CELL(ticker);
+            if (cell_number !== false) {
+              // Historical data is no longer re-built after hours. IEX offers this, but it is a (deprecated?) V1 API call. Look here if data needs to be recovered:
+              // https://iexcloud.io/docs/api/#historical-prices
+              SpreadsheetApp.getActiveSpreadsheet().getSheetByName(ticker).getRange(cell_number, 1).setValue(current_date.toLocaleDateString("en-US"));
+              SpreadsheetApp.getActiveSpreadsheet().getSheetByName(ticker).getRange(cell_number, 2).setValue(json[ticker]["quote"]["close"]);
+            }
+          } else {
+            // Need to keep making API calls until all closing data has been received
+            TRY_AGAIN();
+            // Return false before properties can be reset below
+            return false;
+          }
+        } else {
+          // Return false before properties can be reset below
+          return false;          
+        }
       }
+      // Check and update YTD performance (if necessary)
+      CALCULATE_YTD_PERFORMANCE();
+      // Reset counters to prepare for the next market day
+      PropertiesService.getScriptProperties().deleteProperty("market_open");
+      PropertiesService.getScriptProperties().deleteProperty("api_try_again");
     }
   }
 }
@@ -152,9 +106,9 @@ function CALCULATE_YTD_PERFORMANCE() {
     SpreadsheetApp.getActiveSpreadsheet().getSheetByName("Overview").getRange("K3").setValue(closing_ytd);
   }
 }
-function TRY_AGAIN(index) {
-  // Today's closing price wasn't retrieved successfully. Try again up to 300 times.
-  var tries = parseInt(PropertiesService.getScriptProperties().getProperty("ticker_tries"));
+function TRY_AGAIN() {
+  // Today's closing prices weren't retrieved successfully. Try again up to 300 times.
+  var tries = parseInt(PropertiesService.getScriptProperties().getProperty("api_try_again"));
   if (!isNaN(tries)) {
     tries++;
   } else {
@@ -162,9 +116,7 @@ function TRY_AGAIN(index) {
   }
   if (tries == 300) {
     // We tried 300 times. Give up and try again tomorrow.
-    PropertiesService.getScriptProperties().deleteProperty("ticker_index");
-    PropertiesService.getScriptProperties().deleteProperty("ticker_tries");
+    PropertiesService.getScriptProperties().deleteProperty("api_try_again");
   }
-  PropertiesService.getScriptProperties().setProperty("ticker_tries", tries);
-  PropertiesService.getScriptProperties().setProperty("ticker_index", index); 
+  PropertiesService.getScriptProperties().setProperty("api_try_again", tries);
 }
