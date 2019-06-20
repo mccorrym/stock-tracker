@@ -17,8 +17,13 @@ function FIND_TODAYS_CELL(sheet_name) {
 function GET_REALTIME_PRICING() {
   var current_date = new Date();
   var api_try_again = parseInt(PropertiesService.getScriptProperties().getProperty("api_try_again"));
-  // To save on API calls, only run this routine during market hours
-  if ((current_date.getDay() > 0 && current_date.getDay() < 6) && ((current_date.getHours() == 9 && current_date.getMinutes() > 30) || current_date.getHours() > 9) && (current_date.getHours() < 16 || !isNaN(api_try_again))) {
+  
+  // To save on API calls, only run this routine during market hours. Allow 5 minutes after close to begin collecting closing prices.
+  if ((current_date.getDay() > 0 && current_date.getDay() < 6) && 
+      ((current_date.getHours() == 9 && current_date.getMinutes() > 30) || current_date.getHours() > 9) && 
+      (((current_date.getHours() == 16 && current_date.getMinutes() <= 5) || current_date.getHours() < 16) || 
+      !isNaN(api_try_again))) {
+        
     // Check to see whether the market is open today
     if (PropertiesService.getScriptProperties().getProperty("market_open") == null) {
       // The IPX API offers this: 
@@ -85,16 +90,15 @@ function GET_REALTIME_PRICING() {
             // Return false before properties can be reset below
             return false;
           }
-        } else {
-          // Return false before properties can be reset below
-          return false;          
         }
       }
-      // Check and update YTD performance (if necessary)
-      CALCULATE_YTD_PERFORMANCE();
-      // Reset counters to prepare for the next market day
-      PropertiesService.getScriptProperties().deleteProperty("market_open");
-      PropertiesService.getScriptProperties().deleteProperty("api_try_again");
+      if (current_date.getHours() > 15) {
+        // Check and update YTD performance (if necessary)
+        CALCULATE_YTD_PERFORMANCE();
+        // Reset counters to prepare for the next market day
+        PropertiesService.getScriptProperties().deleteProperty("market_open");
+        PropertiesService.getScriptProperties().deleteProperty("api_try_again");
+      }
     }
   }
 }
@@ -117,6 +121,7 @@ function TRY_AGAIN() {
   if (tries == 300) {
     // We tried 300 times. Give up and try again tomorrow.
     PropertiesService.getScriptProperties().deleteProperty("api_try_again");
+    return false;
   }
   PropertiesService.getScriptProperties().setProperty("api_try_again", tries);
 }
