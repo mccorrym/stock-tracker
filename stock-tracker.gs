@@ -107,7 +107,9 @@ function CALCULATE_YTD_PERFORMANCE() {
   var high_ytd = SpreadsheetApp.getActiveSpreadsheet().getSheetByName("Overview").getRange("K3").getValue();
   
   if (closing_ytd > high_ytd) {
+    var current_date = new Date();
     SpreadsheetApp.getActiveSpreadsheet().getSheetByName("Overview").getRange("K3").setValue(closing_ytd);
+    SpreadsheetApp.getActiveSpreadsheet().getSheetByName("Overview").getRange("L3").setValue(current_date.toLocaleDateString("en-US"));
   }
 }
 function TRY_AGAIN() {
