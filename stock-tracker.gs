@@ -25,37 +25,22 @@ function GET_REALTIME_PRICING() {
       !isNaN(api_try_again))) {
         
     // Check to see whether the market is open today
-    if (PropertiesService.getScriptProperties().getProperty("market_open") == null) {
-      // The IPX API offers this: 
-      // https://iexcloud.io/docs/api/#u-s-holidays-and-trading-dates
-      // May want to consider switching to this if Apple takes away this functionality
-      var url = "http://wu-quotes.apple.com/dgw?imei=555&apptype=finance";
+    if (PropertiesService.getScriptProperties().getProperty("market_open") == null && current_date.getHours() == 9) {
       var options = {
-        "method": "post",
-        "headers": {
-          "Content-Type": "text/xml"
-        },
-        "payload": "<?xml version='1.0' encoding='utf−8'?><request devtype='Apple_OSX' deployver='APPLE_DASHBOARD_1_0' app='YGoAppleStocksWidget' appver='unknown' api='finance' apiver='1.0.1' acknotification='0000'><query id='0' timestamp='`date +%s000`' type='getquotes'><list><symbol>SCHD</symbol></list></query></request>"
-      };
-      var response = UrlFetchApp.fetch(url, options);
-    
-      var document = XmlService.parse(response);
-      var root = document.getRootElement();
-      
-      try {
-        // The market_status value is 1 during market hours.
-        var market_status = root.getChild("result").getChild("list").getChild("quote").getChild("status").getText();
-      
-        if (market_status != "1") {
-          PropertiesService.getScriptProperties().setProperty("market_open", false);
-        } else {
-          PropertiesService.getScriptProperties().setProperty("market_open", true);
+        headers: {
+          "Cache-Control": "max-age=0"
         }
-      } catch(e) {
-        // This service may no longer exist?
-        console.error("Call to wu-quotes.apple.com produced an error: "+e);
-        // Let's just assume the market is open until this can be debugged.
+      };
+      var response = UrlFetchApp.fetch("https://cloud.iexapis.com/stable/ref-data/us/dates/trade/next/1/?token="+PropertiesService.getScriptProperties().getProperty("api_key"), options);
+      var json = JSON.parse(response);
+      var current_date_formatted = Utilities.formatDate(new Date(), "GMT-4", "yyyy-MM-dd");
+      
+      if (json[0]["date"] == current_date_formatted) {
+        // Market is open
         PropertiesService.getScriptProperties().setProperty("market_open", true);
+      } else {
+        // Market is closed
+        PropertiesService.getScriptProperties().setProperty("market_open", false);
       }
     }
     
