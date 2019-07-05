@@ -21,7 +21,7 @@ function GET_REALTIME_PRICING() {
   // To save on API calls, only run this routine during market hours. Allow 5 minutes after close to begin collecting closing prices.
   if (current_date.getDay() > 0 && current_date.getDay() < 6) {
     // Check to see whether the market is open today. This needs to be done during pre-market hours.
-    if (PropertiesService.getScriptProperties().getProperty("market_open") == null && current_date.getHours() >= 0) {
+    if (PropertiesService.getScriptProperties().getProperty("market_open") == null && current_date.getHours() < 9) {
       var options = {
         headers: {
           "Cache-Control": "max-age=0"
