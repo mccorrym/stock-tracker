@@ -34,8 +34,19 @@ function GET_REALTIME_PRICING() {
         // Market is open
         PropertiesService.getScriptProperties().setProperty("market_open", true);
       } else {
-        // Market is closed
-        PropertiesService.getScriptProperties().setProperty("market_open", false);
+        if (current_date.getDay() == 0) {
+          // IEX seems to return Tuesday as the next market open on Sunday evenings
+          var tomorrow = Utilities.formatDate(new Date(new Date().setDate(new Date().getDate() + 2)), "GMT-4", "yyyy-MM-dd");
+          if (json[0]["date"] == tomorrow) {
+            PropertiesService.getScriptProperties().setProperty("market_open", true);
+          } else {
+            // Market is closed
+            PropertiesService.getScriptProperties().setProperty("market_open", false);          
+          }
+        } else {
+          // Market is closed
+          PropertiesService.getScriptProperties().setProperty("market_open", false);
+        }
       }
     }
     // To save on API calls, only run this routine during market hours. Allow 5 minutes after close to begin collecting closing prices.
