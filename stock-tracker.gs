@@ -26,27 +26,18 @@ function GET_REALTIME_PRICING() {
           "Cache-Control": "max-age=0"
         }
       };
-      var response = UrlFetchApp.fetch("https://cloud.iexapis.com/stable/ref-data/us/dates/trade/next/1/?token="+PropertiesService.getScriptProperties().getProperty("api_key"), options);
+      
+      // Retrieve the next market holiday and check to see whether it matches tomorrow's date.
+      var response = UrlFetchApp.fetch("https://cloud.iexapis.com/stable/ref-data/us/dates/holiday/next/1/?token="+PropertiesService.getScriptProperties().getProperty("api_key"), options);
       var json = JSON.parse(response);
       var tomorrow = Utilities.formatDate(new Date(new Date().setDate(new Date().getDate() + 1)), "GMT-4", "yyyy-MM-dd");
       
       if (json[0]["date"] == tomorrow) {
+        // Market is closed
+        PropertiesService.getScriptProperties().setProperty("market_open", false);
+      } else {
         // Market is open
         PropertiesService.getScriptProperties().setProperty("market_open", true);
-      } else {
-        if (current_date.getDay() == 0) {
-          // IEX seems to return Tuesday as the next market open on Sunday evenings
-          var tomorrow = Utilities.formatDate(new Date(new Date().setDate(new Date().getDate() + 2)), "GMT-4", "yyyy-MM-dd");
-          if (json[0]["date"] == tomorrow) {
-            PropertiesService.getScriptProperties().setProperty("market_open", true);
-          } else {
-            // Market is closed
-            PropertiesService.getScriptProperties().setProperty("market_open", false);          
-          }
-        } else {
-          // Market is closed
-          PropertiesService.getScriptProperties().setProperty("market_open", false);
-        }
       }
     }
     // To save on API calls, only run this routine during market hours. Allow 5 minutes after close to begin collecting closing prices.
