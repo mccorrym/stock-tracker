@@ -148,8 +148,8 @@ function TRY_AGAIN() {
   } else {
     tries = 1;
   }
-  if (tries == 300) {
-    // We tried 300 times. Give up and try again tomorrow.
+  if (tries == 1000) {
+    // We tried 1000 times. Give up and try again tomorrow.
     PropertiesService.getScriptProperties().deleteProperty("api_try_again");
     return false;
   }
