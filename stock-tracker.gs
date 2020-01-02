@@ -78,28 +78,28 @@ function GET_REALTIME_PRICING() {
                 }
               }
             }
-            if (tickers_closed == tickers.length) {
-              for (var ticker in json) {
-                var ticker_price = GET_CURRENT_PRICE(json, ticker);
-                SpreadsheetApp.getActiveSpreadsheet().getSheetByName(ticker).getRange("F2").setValue(ticker_price);
-                // The market has closed. Update the individual ticker sheets with closing/historical data for today
-                var cell_number = FIND_TODAYS_CELL(ticker);
-                if (cell_number !== false) {
-                  // Historical data is no longer re-built after hours. IEX offers this, but it is a (deprecated?) V1 API call. Look here if data needs to be recovered:
-                  // https://iexcloud.io/docs/api/#historical-prices
-                  SpreadsheetApp.getActiveSpreadsheet().getSheetByName(ticker).getRange(cell_number, 1).setValue(current_date.toLocaleDateString("en-US"));
-                  var ticker_price = GET_CURRENT_PRICE(json, ticker);
-                  SpreadsheetApp.getActiveSpreadsheet().getSheetByName(ticker).getRange(cell_number, 2).setValue(ticker_price);
-                }
-              }
-            } else {
-              // Need to keep making API calls until all closing data has been received
-              TRY_AGAIN();
-              // Return false before properties can be reset below
-              return false;
-            }
-
             if (current_date.getHours() > 15) {
+              if (tickers_closed == tickers.length) {
+                for (var ticker in json) {
+                  var ticker_price = GET_CURRENT_PRICE(json, ticker);
+                  SpreadsheetApp.getActiveSpreadsheet().getSheetByName(ticker).getRange("F2").setValue(ticker_price);
+                  // The market has closed. Update the individual ticker sheets with closing/historical data for today
+                  var cell_number = FIND_TODAYS_CELL(ticker);
+                  if (cell_number !== false) {
+                    // Historical data is no longer re-built after hours. IEX offers this, but it is a (deprecated?) V1 API call. Look here if data needs to be recovered:
+                    // https://iexcloud.io/docs/api/#historical-prices
+                    SpreadsheetApp.getActiveSpreadsheet().getSheetByName(ticker).getRange(cell_number, 1).setValue(current_date.toLocaleDateString("en-US"));
+                    var ticker_price = GET_CURRENT_PRICE(json, ticker);
+                    SpreadsheetApp.getActiveSpreadsheet().getSheetByName(ticker).getRange(cell_number, 2).setValue(ticker_price);
+                  }
+                }
+              } else {
+                // Need to keep making API calls until all closing data has been received
+                TRY_AGAIN();
+                // Return false before properties can be reset below
+                return false;
+              }
+
               // Check and update YTD performance (if necessary)
               CALCULATE_YTD_PERFORMANCE();
               // Reset counters to prepare for the next market day
