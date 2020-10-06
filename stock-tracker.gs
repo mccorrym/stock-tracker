@@ -1,4 +1,4 @@
-var tickers = ["SCHB", "SCHA", "SCHX", "SCHF", "SCHE", "SCHD", "MUB", "C", "BRK.B", "F", "AAPL", "APTV", "DLPH"];
+var tickers = ["SCHB", "SCHA", "SCHX", "SCHF", "SCHE", "SCHD", "MUB", "C", "BRK.B", "F", "AAPL", "APTV", "BWA"];
 
 function FIND_TODAYS_CELL(sheet_name) {
   var values = SpreadsheetApp.getActiveSpreadsheet().getSheetByName(sheet_name).getRange("A:A").getValues();
