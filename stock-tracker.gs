@@ -1,4 +1,4 @@
-var tickers = ["SCHB", "SCHA", "SCHX", "SCHF", "SCHE", "SCHD", "MUB", "C", "BRK.B", "F", "AAPL", "APTV"];
+var tickers = ["SCHB", "SCHA", "SCHX", "SCHF", "SCHE", "SCHD", "SCHG", "MUB", "C", "BRK.B", "F", "AAPL", "APTV"];
 
 function FIND_TODAYS_CELL(sheet_name) {
   var values = SpreadsheetApp.getActiveSpreadsheet().getSheetByName(sheet_name).getRange("A:A").getValues();
@@ -63,8 +63,8 @@ function GET_REALTIME_PRICING() {
                 SpreadsheetApp.getActiveSpreadsheet().getSheetByName(ticker).getRange("F2").setValue(ticker_price);
               }
               // Determine if the market has closed
-              var closing_date = new Date(json[ticker]["quote"]["latestTime"]);
-              if (current_date.getHours() > 15) {
+              if (json[ticker]["quote"]["isUSMarketOpen"] == false) {
+                var closing_date = new Date(json[ticker]["quote"]["latestTime"]);
                 if (closing_date.getMonth() == current_date.getMonth() &&
                       closing_date.getDate() == current_date.getDate() &&
                       closing_date.getFullYear() == current_date.getFullYear() &&
