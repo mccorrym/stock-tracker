@@ -9,5 +9,5 @@ function GET_BTC_PRICE() {
   var response = UrlFetchApp.fetch("https://api.coinbase.com/v2/prices/BTC-USD/buy");
   var w = JSON.parse(response);
   // The amount returned by the API includes a 1% Coinbase fee
-  SpreadsheetApp.getActiveSpreadsheet().getSheetByName("Overview").getRange("H30").setValue(parseFloat(w["data"]["amount"]) - (parseFloat(w["data"]["amount"]) * .01));
+  SpreadsheetApp.getActiveSpreadsheet().getSheetByName("Overview").getRange("H29").setValue(parseFloat(w["data"]["amount"]) - (parseFloat(w["data"]["amount"]) * .01));
 }
