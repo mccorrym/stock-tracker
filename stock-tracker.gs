@@ -18,27 +18,29 @@ function GET_REALTIME_PRICING() {
   var current_date = new Date();
   var api_try_again = parseInt(PropertiesService.getScriptProperties().getProperty("api_try_again"));
 
-  // Check to see whether the market is open today. This needs to be done during after-market hours and on Sundays.
   if (current_date.getDay() < 6) {
-    if (PropertiesService.getScriptProperties().getProperty("market_open") == null && current_date.getHours() > 17) {
-      var options = {
-        headers: {
-          "Cache-Control": "max-age=0"
-        }
-      };
+    // Check to see whether the market is open today. This needs to be done before market open.
+    if (PropertiesService.getScriptProperties().getProperty("market_open") == null &&
+        (current_date.getDay() > 0 && current_date.getDay() < 6) &&
+        (current_date.getHours() == 9 && current_date.getMinutes() < 30)) {
+          var options = {
+            headers: {
+              "Cache-Control": "max-age=0"
+            }
+          };
 
-      // Retrieve the next market holiday and check to see whether it matches tomorrow's date.
-      var response = UrlFetchApp.fetch("https://cloud.iexapis.com/stable/ref-data/us/dates/holiday/next/1/?token="+PropertiesService.getScriptProperties().getProperty("api_key"), options);
-      var json = JSON.parse(response);
-      var tomorrow = Utilities.formatDate(new Date(new Date().setDate(new Date().getDate() + 1)), "GMT-4", "yyyy-MM-dd");
+          // Retrieve the next market holiday and check to see whether it matches today's date.
+          var response = UrlFetchApp.fetch("https://cloud.iexapis.com/stable/ref-data/us/dates/holiday/next/1/?token="+PropertiesService.getScriptProperties().getProperty("api_key"), options);
+          var json = JSON.parse(response);
+          var today = Utilities.formatDate(new Date(), "GMT-4", "yyyy-MM-dd");
 
-      if (json[0]["date"] == tomorrow) {
-        // Market is closed
-        PropertiesService.getScriptProperties().setProperty("market_open", false);
-      } else {
-        // Market is open
-        PropertiesService.getScriptProperties().setProperty("market_open", true);
-      }
+          if (json[0]["date"] == today) {
+            // Market is closed
+            PropertiesService.getScriptProperties().setProperty("market_open", false);
+          } else {
+            // Market is open
+            PropertiesService.getScriptProperties().setProperty("market_open", true);
+          }
     }
     // To save on API calls, only run this routine during market hours. Allow 5 minutes after close to begin collecting closing prices.
     if ((current_date.getDay() > 0 && current_date.getDay() < 6) &&
@@ -65,16 +67,22 @@ function GET_REALTIME_PRICING() {
               // Determine if the market has closed
               if (json[ticker]["quote"]["isUSMarketOpen"] == false) {
                 var closing_date = new Date(json[ticker]["quote"]["latestTime"]);
-                if (closing_date.getMonth() == current_date.getMonth() &&
-                      closing_date.getDate() == current_date.getDate() &&
-                      closing_date.getFullYear() == current_date.getFullYear() &&
-                      json[ticker]["quote"]["latestSource"] == "Close") {
-                        tickers_closed++;
+                // If the number of API calls exceed 400, it's likely that one or more tickers never reported its closing price to IEX.
+                // Give up here and get the "latest price" for all tickers so that the day can be properly closed out.
+                if (parseInt(PropertiesService.getScriptProperties().getProperty("api_try_again")) >= 400) {
+                  tickers_closed++;
                 } else {
-                  // Need to keep making API calls until all closing data has been received
-                  TRY_AGAIN();
-                  // Return false before properties can be reset below
-                  return false;
+                  if (closing_date.getMonth() == current_date.getMonth() &&
+                        closing_date.getDate() == current_date.getDate() &&
+                        closing_date.getFullYear() == current_date.getFullYear() &&
+                        json[ticker]["quote"]["latestSource"] == "Close") {
+                          tickers_closed++;
+                  } else {
+                    // Need to keep making API calls until all closing data has been received
+                    TRY_AGAIN();
+                    // Return false before properties can be reset below
+                    return false;
+                  }
                 }
               }
             }
