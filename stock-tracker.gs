@@ -141,12 +141,18 @@ function GET_CURRENT_PRICE(json_obj, ticker) {
 function CALCULATE_YTD_PERFORMANCE() {
   var closing_ytd = SpreadsheetApp.getActiveSpreadsheet().getSheetByName("Overview").getRange("K2").getValue();
   var high_ytd = SpreadsheetApp.getActiveSpreadsheet().getSheetByName("Overview").getRange("K3").getValue();
+  var current_date = new Date();
 
   if (closing_ytd > high_ytd) {
-    var current_date = new Date();
     SpreadsheetApp.getActiveSpreadsheet().getSheetByName("Overview").getRange("K3").setValue(closing_ytd);
     SpreadsheetApp.getActiveSpreadsheet().getSheetByName("Overview").getRange("L3").setValue(current_date.toLocaleDateString("en-US"));
   }
+
+  // Log the daily performance to the Performance sheet
+  var cell_number = FIND_TODAYS_CELL("Performance");
+  var performance = SpreadsheetApp.getActiveSpreadsheet().getSheetByName("Overview").getRange("F2").getValue();
+  SpreadsheetApp.getActiveSpreadsheet().getSheetByName("Performance").getRange(cell_number, 1).setValue(current_date.toLocaleDateString("en-US"));
+  SpreadsheetApp.getActiveSpreadsheet().getSheetByName("Performance").getRange(cell_number, 2).setValue(performance);
 }
 function TRY_AGAIN() {
   // Today's closing prices weren't retrieved successfully. Try again up to 300 times.
